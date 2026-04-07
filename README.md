@@ -15,7 +15,7 @@ This workspace contains scripts for local network discovery, a SQLite-backed ass
 - `Edit-AssetRecord.ps1`: Search-first maintenance flow that lets you select a matching asset and update it without manually typing the asset ID.
 - `Start-Viewer.ps1`: Starts a local web server for the viewer and opens it with snapshot auto-load enabled.
 - `Update-AssetInventory.ps1`: Legacy JSON inventory merge workflow retained for compatibility.
-- `Verify-AzureAssets.ps1`: Loads the inventory, queries Azure VM and NIC metadata through Azure PowerShell modules, and reports inventory matches or gaps.
+- `Verify-AzureAssets.ps1`: Compares canonical assets against Microsoft Entra device objects in the current Azure login context, updates the `AzureVerified` flag in the database, and exports a verification report.
 - `AssetToolkit.psm1`: Shared functions used by the scripts.
 - `viewer\`: Static HTML viewer for discovery JSON with summary cards, filters, and exportable tables.
 - `db\`: SQLite schema and helper script used by the PowerShell wrappers.
