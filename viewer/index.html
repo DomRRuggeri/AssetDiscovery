@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Discovery Viewer</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero">
+            <div>
+                <p class="eyebrow">Network Discovery</p>
+                <h1>Asset Discovery Viewer</h1>
+            </div>
+            <div class="hero-panel">
+                <div class="panel-stack">
+                    <div class="panel-inline">
+                        <p class="panel-title">Load Data</p>
+                        <label class="file-picker">
+                            <span>Load Local JSON</span>
+                            <input type="file" id="fileInput" accept=".json,application/json">
+                        </label>
+                    </div>
+                    <div class="panel-inline">
+                        <p class="panel-title">About</p>
+                        <a class="ghost-link" href="./about.html">Open README</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="summary-grid" id="summaryGrid">
+            <article class="summary-card">
+                <span class="summary-label">Assets</span>
+                <strong id="metricAssets">0</strong>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">With Hostname</span>
+                <strong id="metricHostname">0</strong>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Assigned Owner</span>
+                <strong id="metricOwner">0</strong>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Active Assets</span>
+                <strong id="metricActive">0</strong>
+            </article>
+        </section>
+
+        <section class="controls">
+            <div class="control-block">
+                <label for="searchInput">Search</label>
+                <input id="searchInput" type="search" placeholder="Hostname, IP, MAC, owner, environment">
+            </div>
+            <div class="control-block">
+                <label for="statusFilter">Status</label>
+                <select id="statusFilter">
+                    <option value="">All statuses</option>
+                </select>
+            </div>
+            <div class="control-block">
+                <label for="environmentFilter">Environment</label>
+                <select id="environmentFilter">
+                    <option value="">All environments</option>
+                </select>
+            </div>
+        </section>
+
+        <section class="table-shell">
+            <div class="table-header">
+                <div>
+                    <h2>Assets</h2>
+                    <p id="tableMeta">Loading asset snapshot...</p>
+                </div>
+                <button type="button" id="exportButton" class="ghost-button" disabled>Export Filtered CSV</button>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><button type="button" class="sort-button" data-sort-key="Hostname">Hostname</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="IpAddress">IP Address</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="MacAddress">MAC Address</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="MacVendor">MAC Vendor</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="Owner">Owner</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="Environment">Environment</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="AzureVerified">Azure Verified</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="Status">Status</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="LastSeen">Last Seen</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="AssetId">Asset ID</button></th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetTableBody">
+                        <tr>
+                            <td colspan="10" class="empty-state">Loading asset snapshot...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="./app.js"></script>
+</body>
+</html>

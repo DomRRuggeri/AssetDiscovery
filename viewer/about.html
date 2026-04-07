@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About | Asset Discovery Viewer</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div class="page-shell page-shell-narrow">
+        <header class="hero hero-single">
+            <div>
+                <p class="eyebrow">About</p>
+                <h1>Project README</h1>
+            </div>
+            <div class="hero-panel">
+                <div class="panel-stack">
+                    <div class="panel-inline">
+                        <p class="panel-title">Viewer</p>
+                        <a class="ghost-link" href="./index.html">Back to Assets</a>
+                    </div>
+                    <p class="panel-note">This page loads <span class="mono">README.md</span> from the project root over the local web server.</p>
+                </div>
+            </div>
+        </header>
+
+        <main class="detail-shell markdown-shell">
+            <div id="readmeStatus" class="panel-note">Loading README...</div>
+            <article id="readmeContent" class="markdown-content"></article>
+        </main>
+    </div>
+
+    <script src="./about.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Collected asset data and generated reports
+/data/
+/output/
+/targets/
+
+# Python and PowerShell transient files
+__pycache__/
+*.pyc
+*.pyo
+*.tmp
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
