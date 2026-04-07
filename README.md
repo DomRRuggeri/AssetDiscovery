@@ -102,6 +102,8 @@ For larger environments, start with `-TargetIpAddress` or a very small `-StartHo
 
 Open `viewer\index.html` in a browser to review exported asset snapshots as a table.
 
+![Asset Discovery Viewer screenshot](./ExampleScreenshot.png)
+
 - The viewer now tries to auto-load `.\output\asset-snapshot.json` on page open.
 - `Start-Viewer.ps1` is the preferred way to launch it because it serves the page over `http://localhost`.
 - If you open `viewer\index.html` directly and the browser blocks local `fetch`, use the built-in file picker as fallback.
