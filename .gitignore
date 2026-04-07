@@ -1,7 +1,10 @@
 # Collected asset data and generated reports
-/data/
-/output/
-/targets/
+/data/*
+/output/*
+/targets/*
+!/data/.gitkeep
+!/output/.gitkeep
+!/targets/.gitkeep
 
 # Python and PowerShell transient files
 __pycache__/
