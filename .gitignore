@@ -15,3 +15,6 @@ __pycache__/
 # Editor and OS noise
 .DS_Store
 Thumbs.db
+
+# Local resume notes
+HANDOFF.md
