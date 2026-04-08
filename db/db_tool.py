@@ -48,6 +48,7 @@ def normalize_record(record):
         "Hostname": first_value("Hostname", "Name", "DeviceName", "ComputerName"),
         "IpAddress": first_value("IpAddress", "IPAddress", "PrivateIpAddress", "Address"),
         "MacAddress": normalize_mac(first_value("MacAddress", "MACAddress", "Mac")),
+        "AssetType": first_value("AssetType", "Type", "Category", "DeviceType"),
         "OperatingSystem": first_value("OperatingSystem"),
         "Owner": first_value("Owner"),
         "Environment": first_value("Environment"),
@@ -90,6 +91,8 @@ def ensure_schema(connection):
     }
     if "mac_vendor" not in columns:
         connection.execute("ALTER TABLE assets ADD COLUMN mac_vendor TEXT")
+    if "asset_type" not in columns:
+        connection.execute("ALTER TABLE assets ADD COLUMN asset_type TEXT")
     if "azure_verified" not in columns:
         connection.execute("ALTER TABLE assets ADD COLUMN azure_verified INTEGER NOT NULL DEFAULT 0")
 
@@ -180,15 +183,16 @@ def upsert_asset(connection, record):
         connection.execute(
             """
             INSERT INTO assets (
-                asset_id, hostname, ip_address, mac_address, operating_system,
+                asset_id, hostname, ip_address, mac_address, asset_type, operating_system,
                 mac_vendor, owner, environment, source, first_seen, last_seen, azure_verified, status, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 asset_id,
                 record["Hostname"],
                 record["IpAddress"],
                 record["MacAddress"],
+                record["AssetType"],
                 record["OperatingSystem"],
                 None,
                 record["Owner"],
@@ -210,6 +214,7 @@ def upsert_asset(connection, record):
         SET hostname = COALESCE(?, hostname),
             ip_address = COALESCE(?, ip_address),
             mac_address = COALESCE(?, mac_address),
+            asset_type = COALESCE(?, asset_type),
             operating_system = COALESCE(?, operating_system),
             owner = COALESCE(?, owner),
             environment = COALESCE(?, environment),
@@ -223,6 +228,7 @@ def upsert_asset(connection, record):
             record["Hostname"],
             record["IpAddress"],
             record["MacAddress"],
+            record["AssetType"],
             record["OperatingSystem"],
             record["Owner"],
             record["Environment"],
@@ -319,6 +325,7 @@ def export_assets(db_path: Path, output_path: Path):
                 hostname AS Hostname,
                 ip_address AS IpAddress,
                 mac_address AS MacAddress,
+                asset_type AS AssetType,
                 mac_vendor AS MacVendor,
                 operating_system AS OperatingSystem,
                 owner AS Owner,
@@ -376,6 +383,7 @@ def list_assets(db_path: Path, search: str | None, status: str | None):
                 hostname AS Hostname,
                 ip_address AS IpAddress,
                 mac_address AS MacAddress,
+                asset_type AS AssetType,
                 mac_vendor AS MacVendor,
                 owner AS Owner,
                 environment AS Environment,
@@ -398,12 +406,13 @@ def list_assets(db_path: Path, search: str | None, status: str | None):
                     OR LOWER(COALESCE(hostname, '')) LIKE LOWER(?)
                     OR LOWER(COALESCE(ip_address, '')) LIKE LOWER(?)
                     OR LOWER(COALESCE(mac_address, '')) LIKE LOWER(?)
+                    OR LOWER(COALESCE(asset_type, '')) LIKE LOWER(?)
                     OR LOWER(COALESCE(owner, '')) LIKE LOWER(?)
                     OR LOWER(COALESCE(environment, '')) LIKE LOWER(?)
                 )
             """
             pattern = f"%{search}%"
-            parameters.extend([pattern] * 6)
+            parameters.extend([pattern] * 7)
 
         query += " ORDER BY COALESCE(hostname, ip_address, asset_id)"
         rows = connection.execute(query, parameters).fetchall()
@@ -418,6 +427,7 @@ def update_asset(
     hostname: str | None,
     ip_address: str | None,
     mac_address: str | None,
+    asset_type: str | None,
     operating_system: str | None,
     owner: str | None,
     environment: str | None,
@@ -438,6 +448,7 @@ def update_asset(
             "hostname": hostname,
             "ip_address": ip_address,
             "mac_address": normalize_mac(mac_address) if mac_address else mac_address,
+            "asset_type": asset_type,
             "operating_system": operating_system,
             "owner": owner,
             "environment": environment,
@@ -455,7 +466,7 @@ def update_asset(
             row = connection.execute(
                 """
                 SELECT asset_id AS AssetId, hostname AS Hostname, ip_address AS IpAddress, mac_address AS MacAddress,
-                       mac_vendor AS MacVendor, operating_system AS OperatingSystem, owner AS Owner, environment AS Environment,
+                       asset_type AS AssetType, mac_vendor AS MacVendor, operating_system AS OperatingSystem, owner AS Owner, environment AS Environment,
                        azure_verified AS AzureVerified,
                        status AS Status, notes AS Notes, first_seen AS FirstSeen, last_seen AS LastSeen
                 FROM assets
@@ -476,7 +487,7 @@ def update_asset(
         row = connection.execute(
             """
             SELECT asset_id AS AssetId, hostname AS Hostname, ip_address AS IpAddress, mac_address AS MacAddress,
-                   mac_vendor AS MacVendor, operating_system AS OperatingSystem, owner AS Owner, environment AS Environment,
+                   asset_type AS AssetType, mac_vendor AS MacVendor, operating_system AS OperatingSystem, owner AS Owner, environment AS Environment,
                    azure_verified AS AzureVerified,
                    status AS Status, notes AS Notes, first_seen AS FirstSeen, last_seen AS LastSeen
             FROM assets
@@ -633,6 +644,7 @@ def main():
     update_asset_parser.add_argument("--hostname")
     update_asset_parser.add_argument("--ip-address")
     update_asset_parser.add_argument("--mac-address")
+    update_asset_parser.add_argument("--asset-type")
     update_asset_parser.add_argument("--operating-system")
     update_asset_parser.add_argument("--owner")
     update_asset_parser.add_argument("--environment")
@@ -667,6 +679,7 @@ def main():
                 args.hostname,
                 args.ip_address,
                 args.mac_address,
+                args.asset_type,
                 args.operating_system,
                 args.owner,
                 args.environment,

@@ -52,7 +52,7 @@
         <section class="controls">
             <div class="control-block">
                 <label for="searchInput">Search</label>
-                <input id="searchInput" type="search" placeholder="Hostname, IP, MAC, owner, environment">
+                <input id="searchInput" type="search" placeholder="Hostname, IP, MAC, type, owner, environment">
             </div>
             <div class="control-block">
                 <label for="statusFilter">Status</label>
@@ -84,6 +84,7 @@
                             <th><button type="button" class="sort-button" data-sort-key="Hostname">Hostname</button></th>
                             <th><button type="button" class="sort-button" data-sort-key="IpAddress">IP Address</button></th>
                             <th><button type="button" class="sort-button" data-sort-key="MacAddress">MAC Address</button></th>
+                            <th><button type="button" class="sort-button" data-sort-key="AssetType">Asset Type</button></th>
                             <th><button type="button" class="sort-button" data-sort-key="MacVendor">MAC Vendor</button></th>
                             <th><button type="button" class="sort-button" data-sort-key="Owner">Owner</button></th>
                             <th><button type="button" class="sort-button" data-sort-key="Environment">Environment</button></th>
@@ -95,7 +96,7 @@
                     </thead>
                     <tbody id="assetTableBody">
                         <tr>
-                            <td colspan="10" class="empty-state">Loading asset snapshot...</td>
+                            <td colspan="11" class="empty-state">Loading asset snapshot...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -103,6 +104,6 @@
         </section>
     </div>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260408-assettype-1"></script>
 </body>
 </html>

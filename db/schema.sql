@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS assets (
     hostname TEXT,
     ip_address TEXT,
     mac_address TEXT,
+    asset_type TEXT,
     mac_vendor TEXT,
     operating_system TEXT,
     owner TEXT,

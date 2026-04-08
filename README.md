@@ -28,6 +28,7 @@ CSV or JSON input can use these fields directly, or common aliases such as `Name
 - `Hostname`
 - `IpAddress`
 - `MacAddress`
+- `AssetType`
 - `OperatingSystem`
 - `Owner`
 - `Environment`
@@ -46,8 +47,8 @@ CSV or JSON input can use these fields directly, or common aliases such as `Name
 .\\Update-OuiRegistry.ps1 -OutputPath .\data\oui-registry.json
 .\\Update-AssetVendors.ps1 -DatabasePath .\data\assets.db -RegistryPath .\data\oui-registry.json
 .\\Get-AssetRecords.ps1 -DatabasePath .\data\assets.db -Search UTILITY
-.\\Update-AssetRecord.ps1 -DatabasePath .\data\assets.db -AssetId <asset-guid> -Owner "IT Operations" -Environment Production -Status active
-.\\Edit-AssetRecord.ps1 -DatabasePath .\data\assets.db -Search UTILITY -Owner "IT Operations" -Environment Production
+.\\Update-AssetRecord.ps1 -DatabasePath .\data\assets.db -AssetId <asset-guid> -AssetType PC -Owner "IT Operations" -Environment Production -Status active
+.\\Edit-AssetRecord.ps1 -DatabasePath .\data\assets.db -Search UTILITY -AssetType PC -Owner "IT Operations" -Environment Production
 .\Export-AssetSnapshot.ps1 -DatabasePath .\data\assets.db -OutputPath .\output\asset-snapshot.json
 .\\Start-Viewer.ps1
 .\Update-AssetInventory.ps1 -SourcePath .\output\discovery.json -InventoryPath .\data\asset-inventory.json

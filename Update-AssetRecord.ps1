@@ -11,6 +11,8 @@ param(
 
     [string]$MacAddress,
 
+    [string]$AssetType,
+
     [string]$OperatingSystem,
 
     [string]$Owner,
@@ -41,6 +43,7 @@ $optionalParameters = @{
     '--hostname' = $Hostname
     '--ip-address' = $IpAddress
     '--mac-address' = $MacAddress
+    '--asset-type' = $AssetType
     '--operating-system' = $OperatingSystem
     '--owner' = $Owner
     '--environment' = $Environment

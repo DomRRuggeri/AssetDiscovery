@@ -52,6 +52,7 @@ function renderAsset(asset) {
         ["Hostname", asset.Hostname],
         ["IP Address", asset.IpAddress],
         ["MAC Address", asset.MacAddress],
+        ["Asset Type", asset.AssetType],
         ["MAC Vendor", asset.MacVendor],
         ["Owner", asset.Owner],
         ["Environment", asset.Environment],

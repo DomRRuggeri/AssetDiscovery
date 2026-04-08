@@ -13,6 +13,8 @@ param(
 
     [string]$MacAddress,
 
+    [string]$AssetType,
+
     [string]$OperatingSystem,
 
     [string]$Owner,
@@ -66,7 +68,7 @@ $updateArguments = @{
     DatabasePath = $DatabasePath
 }
 
-foreach ($name in @('Hostname', 'IpAddress', 'MacAddress', 'OperatingSystem', 'Owner', 'Environment', 'Status', 'Notes')) {
+foreach ($name in @('Hostname', 'IpAddress', 'MacAddress', 'AssetType', 'OperatingSystem', 'Owner', 'Environment', 'Status', 'Notes')) {
     if ($PSBoundParameters.ContainsKey($name)) {
         $updateArguments[$name] = (Get-Variable -Name $name -ValueOnly)
     }

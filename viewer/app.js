@@ -79,6 +79,7 @@ function normalizeAsset(asset) {
         Hostname: asset.Hostname ?? "",
         IpAddress: asset.IpAddress ?? "",
         MacAddress: asset.MacAddress ?? "",
+        AssetType: asset.AssetType ?? "",
         MacVendor: asset.MacVendor ?? "",
         Source: asset.Source ?? "",
         AzureVerified: Boolean(asset.AzureVerified),
@@ -135,6 +136,7 @@ function applyFilters() {
             asset.Hostname,
             asset.IpAddress,
             asset.MacAddress,
+            asset.AssetType,
             asset.MacVendor,
             asset.Owner,
             asset.Environment,
@@ -166,7 +168,7 @@ function renderTable(assets) {
 
     if (assets.length === 0) {
         const row = document.createElement("tr");
-        row.innerHTML = '<td colspan="10" class="empty-state">No assets match the current filters.</td>';
+        row.innerHTML = '<td colspan="11" class="empty-state">No assets match the current filters.</td>';
         elements.assetTableBody.appendChild(row);
         return;
     }
@@ -177,6 +179,7 @@ function renderTable(assets) {
             <td>${formatText(asset.Hostname)}</td>
             <td class="mono">${formatText(asset.IpAddress)}</td>
             <td class="mono">${formatText(asset.MacAddress)}</td>
+            <td>${formatText(asset.AssetType)}</td>
             <td>${formatText(asset.MacVendor)}</td>
             <td>${formatText(asset.Owner)}</td>
             <td>${formatText(asset.Environment)}</td>
@@ -226,7 +229,7 @@ function exportFilteredCsv() {
         return;
     }
 
-    const headers = ["Hostname", "IpAddress", "MacAddress", "MacVendor", "Owner", "Environment", "Status", "LastSeen", "AssetId"];
+    const headers = ["Hostname", "IpAddress", "MacAddress", "AssetType", "MacVendor", "Owner", "Environment", "Status", "LastSeen", "AssetId"];
     const rows = state.filteredAssets.map((asset) => headers.map((header) => csvEscape(asset[header])));
     const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
 
@@ -251,7 +254,7 @@ async function loadDefaultSnapshot() {
     }
     catch (error) {
         elements.tableMeta.textContent = "Auto-load unavailable. Use Load Local JSON if needed.";
-        elements.assetTableBody.innerHTML = '<tr><td colspan="9" class="empty-state">Auto-load failed. Use Load Local JSON to open asset-snapshot.json.</td></tr>';
+        elements.assetTableBody.innerHTML = '<tr><td colspan="11" class="empty-state">Auto-load failed. Use Load Local JSON to open asset-snapshot.json.</td></tr>';
         console.error(error);
     }
 }

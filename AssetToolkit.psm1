@@ -121,6 +121,7 @@ function Normalize-ToolkitAssetRecord {
         $hostname = Get-ToolkitPropertyValue -InputObject $InputObject -PropertyName @('Hostname', 'Name', 'DeviceName', 'ComputerName')
         $ipAddress = Get-ToolkitPropertyValue -InputObject $InputObject -PropertyName @('IpAddress', 'IPAddress', 'PrivateIpAddress', 'Address')
         $macAddress = Get-ToolkitPropertyValue -InputObject $InputObject -PropertyName @('MacAddress', 'MACAddress', 'Mac')
+        $assetType = Get-ToolkitPropertyValue -InputObject $InputObject -PropertyName @('AssetType', 'Type', 'Category', 'DeviceType')
         $source = Get-ToolkitPropertyValue -InputObject $InputObject -PropertyName @('Source', 'InventorySource')
         $assetId = Get-ToolkitPropertyValue -InputObject $InputObject -PropertyName @('AssetId')
         $operatingSystem = Get-ToolkitPropertyValue -InputObject $InputObject -PropertyName @('OperatingSystem')
@@ -134,6 +135,7 @@ function Normalize-ToolkitAssetRecord {
             Hostname        = if ($hostname) { [string]$hostname } else { $null }
             IpAddress       = if ($ipAddress) { [string]$ipAddress } else { $null }
             MacAddress      = ConvertTo-ToolkitMacAddress -MacAddress $macAddress
+            AssetType       = if ($assetType) { [string]$assetType } else { $null }
             OperatingSystem = if ($operatingSystem) { [string]$operatingSystem } else { $null }
             Owner           = if ($owner) { [string]$owner } else { $null }
             Environment     = if ($environment) { [string]$environment } else { $null }
@@ -238,6 +240,7 @@ function Merge-ToolkitAssets {
                 Hostname        = if ($asset.Hostname) { $asset.Hostname } else { $current.Hostname }
                 IpAddress       = if ($asset.IpAddress) { $asset.IpAddress } else { $current.IpAddress }
                 MacAddress      = if ($asset.MacAddress) { $asset.MacAddress } else { $current.MacAddress }
+                AssetType       = if ($asset.AssetType) { $asset.AssetType } else { $current.AssetType }
                 OperatingSystem = if ($asset.OperatingSystem) { $asset.OperatingSystem } else { $current.OperatingSystem }
                 Owner           = if ($asset.Owner) { $asset.Owner } else { $current.Owner }
                 Environment     = if ($asset.Environment) { $asset.Environment } else { $current.Environment }
