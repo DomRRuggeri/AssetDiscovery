@@ -7,6 +7,9 @@ This workspace contains scripts for local network discovery, a SQLite-backed ass
 - `Discover-Network.ps1`: Ping-sweeps a subnet, resolves DNS names when possible, captures ARP MAC addresses, and writes normalized JSON output.
 - `Init-AssetDatabase.ps1`: Creates the SQLite database used as the canonical asset store.
 - `Import-DiscoveryToDatabase.ps1`: Imports a CSV or JSON discovery file into the SQLite asset database and appends observation history.
+- `Compare-NinjaExport.ps1`: Compares a NinjaOne CSV export against the SQLite asset database and writes a review report with strong matches, IP-only review rows, and conflicts.
+- `Import-NinjaExportToDatabase.ps1`: Imports a NinjaOne CSV export using MAC and short-hostname matching, while skipping IP-only and conflict rows for review.
+- `Repair-BadNinjaMacMerge.ps1`: Repairs Ninja-imported assets that were incorrectly merged under a known bad shared MAC address by reassigning observations to per-device assets.
 - `Export-AssetSnapshot.ps1`: Exports the current canonical asset records from SQLite to JSON for reporting or the viewer.
 - `Update-OuiRegistry.ps1`: Downloads and builds a local OUI vendor registry cache from the official IEEE CSV registries.
 - `Update-AssetVendors.ps1`: Uses the local OUI registry cache to populate `MacVendor` in the asset database.
@@ -44,6 +47,9 @@ CSV or JSON input can use these fields directly, or common aliases such as `Name
 .\\Discover-Network.ps1 -TargetFilePath .\targets\batch1.txt -NoDns -NoMac -DelayMilliseconds 250 -OutputPath .\output\discovery.json
 .\Init-AssetDatabase.ps1 -DatabasePath .\data\assets.db
 .\Import-DiscoveryToDatabase.ps1 -InputPath .\output\discovery.json -DatabasePath .\data\assets.db
+.\\Compare-NinjaExport.ps1 -InputPath .\NinjaExport.csv -DatabasePath .\data\assets.db -OutputPath .\output\ninja-compare-report.json
+.\\Import-NinjaExportToDatabase.ps1 -InputPath .\NinjaExport.csv -DatabasePath .\data\assets.db -ReportPath .\output\ninja-import-report.json
+.\\Repair-BadNinjaMacMerge.ps1 -DatabasePath .\data\assets.db -BadMacAddress 00:09:0F:AA:00:01
 .\\Update-OuiRegistry.ps1 -OutputPath .\data\oui-registry.json
 .\\Update-AssetVendors.ps1 -DatabasePath .\data\assets.db -RegistryPath .\data\oui-registry.json
 .\\Get-AssetRecords.ps1 -DatabasePath .\data\assets.db -Search UTILITY
@@ -77,6 +83,16 @@ Discovery imports use stronger identity rules before updating an existing asset:
 - `IpAddress` only for recent unresolved assets that have no hostname or MAC
 
 This avoids treating IP address reuse as a durable identity signal while still allowing short-term continuity for weakly identified devices.
+
+## Ninja export import
+
+`NinjaExport.csv` is not in the generic discovery schema, so it uses a separate import path.
+
+- `Compare-NinjaExport.ps1` produces a report before import
+- matching is strong on MAC address first, then unique short-hostname equivalence against FQDN inventory names
+- IP address overlap is treated as a review signal only and is not used as an automatic merge key
+- rows with conflicting MAC and IP signals are skipped from import and left in the report for manual review
+- multi-adapter rows are reduced to a preferred IPv4 and MAC for canonical storage, while the full candidate lists remain visible in the report
 
 ## Vendor enrichment
 
