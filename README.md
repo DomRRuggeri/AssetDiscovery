@@ -16,6 +16,7 @@ This workspace contains scripts for local network discovery, a SQLite-backed ass
 - `Get-AssetRecords.ps1`: Queries the canonical asset records from SQLite with optional search and status filters.
 - `Update-AssetRecord.ps1`: Updates owner, environment, status, notes, and identity fields for an existing asset.
 - `Edit-AssetRecord.ps1`: Search-first maintenance flow that lets you select a matching asset and update it without manually typing the asset ID.
+- `Invoke-AssetDiscoveryRefresh.ps1`: Runs the recurring refresh cycle: database initialization, Ninja comparison/import, vendor enrichment, Azure verification, and snapshot export.
 - `Start-Viewer.ps1`: Starts a local web server for the viewer and opens it with snapshot auto-load enabled.
 - `Update-AssetInventory.ps1`: Legacy JSON inventory merge workflow retained for compatibility.
 - `New-AssetDiscoveryGraphApp.ps1`: Creates a Microsoft Graph app registration for unattended device reads.
@@ -61,6 +62,7 @@ CSV or JSON input can use these fields directly, or common aliases such as `Name
 .\Update-AssetInventory.ps1 -SourcePath .\output\discovery.json -InventoryPath .\data\asset-inventory.json
 .\Verify-AzureAssets.ps1 -DatabasePath .\data\assets.db
 .\Verify-AzureAssets.ps1 -DatabasePath .\data\assets.db -CredentialPath .\data\graph-app-credentials.json
+.\Invoke-AssetDiscoveryRefresh.ps1
 ```
 
 ## Database model
@@ -144,6 +146,36 @@ If no Graph app credentials are supplied, `Verify-AzureAssets.ps1` falls back to
 
 For larger environments, start with `-TargetIpAddress` or a very small `-StartHost`/`-EndHost` window and keep `-NoDns`, `-NoMac`, and a small `-DelayMilliseconds` value enabled until you confirm the behavior is acceptable.
 
+## Refresh cycle
+
+`Invoke-AssetDiscoveryRefresh.ps1` is the scheduled refresh entry point. It runs these steps from the repository root:
+
+- initializes or migrates `.\data\assets.db`
+- compares and imports `.\NinjaExport.csv` when present
+- updates `MacVendor` from `.\data\oui-registry.json` when present
+- verifies assets against Microsoft Graph when `.\data\graph-app-credentials.json` exists
+- exports `.\output\asset-snapshot.json` for the viewer
+- writes a transcript log to `.\output\asset-refresh-YYYYMMDD-HHMMSS.log`
+
+The current Windows Scheduled Task on this machine is named `AssetDiscovery Refresh`. It runs daily at 6:00 AM as the interactive `druggeri` user and executes:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\users\druggeri\Scripts\AssetDiscovery\Invoke-AssetDiscoveryRefresh.ps1
+```
+
+To recreate or update the task:
+
+```powershell
+$taskName = 'AssetDiscovery Refresh'
+$scriptPath = 'C:\users\druggeri\Scripts\AssetDiscovery\Invoke-AssetDiscoveryRefresh.ps1'
+$workDir = 'C:\users\druggeri\Scripts\AssetDiscovery'
+$action = New-ScheduledTaskAction -Execute 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -WorkingDirectory $workDir
+$trigger = New-ScheduledTaskTrigger -Daily -At 6:00AM
+$principal = New-ScheduledTaskPrincipal -UserId 'druggeri' -LogonType Interactive -RunLevel Limited
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Refresh AssetDiscovery database, Azure verification, and viewer snapshot.' -Force
+```
+
 ## Viewer
 
 Open `viewer\index.html` in a browser to review exported asset snapshots as a table.
@@ -152,6 +184,7 @@ Open `viewer\index.html` in a browser to review exported asset snapshots as a ta
 
 - The viewer now tries to auto-load `.\output\asset-snapshot.json` on page open.
 - `Start-Viewer.ps1` is the preferred way to launch it because it serves the page over `http://localhost`.
-- If you open `viewer\index.html` directly and the browser blocks local `fetch`, use the built-in file picker as fallback.
+- If you open `viewer\index.html` directly and the browser blocks local `fetch`, start the viewer with `Start-Viewer.ps1`.
 - The viewer is now oriented around maintained asset fields such as owner, environment, status, and last seen.
+- The summary cards show asset counts plus the last modified times for the inventory snapshot, Azure verification report, and Ninja export CSV.
 - It supports search, environment filtering, status filtering, and CSV export of the filtered rows.
