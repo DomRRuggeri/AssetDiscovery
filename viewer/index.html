@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asset Discovery Viewer</title>
     <link rel="icon" href="./favicon.ico" sizes="any">
-    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="./styles.css?v=20260507-summary-5">
 </head>
 <body>
     <div class="page-shell">
@@ -16,13 +16,6 @@
             </div>
             <div class="hero-panel">
                 <div class="panel-stack">
-                    <div class="panel-inline">
-                        <p class="panel-title">Load Data</p>
-                        <label class="file-picker">
-                            <span>Load Local JSON</span>
-                            <input type="file" id="fileInput" accept=".json,application/json">
-                        </label>
-                    </div>
                     <div class="panel-inline">
                         <p class="panel-title">About</p>
                         <a class="ghost-link" href="./about.html">Open README</a>
@@ -37,16 +30,20 @@
                 <strong id="metricAssets">0</strong>
             </article>
             <article class="summary-card">
-                <span class="summary-label">With Hostname</span>
-                <strong id="metricHostname">0</strong>
-            </article>
-            <article class="summary-card">
                 <span class="summary-label">Assigned Owner</span>
                 <strong id="metricOwner">0</strong>
             </article>
             <article class="summary-card">
-                <span class="summary-label">Active Assets</span>
-                <strong id="metricActive">0</strong>
+                <span class="summary-label">Inventory Updated</span>
+                <strong id="metricInventoryUpdated">n/a</strong>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Azure Checked</span>
+                <strong id="metricAzureChecked">n/a</strong>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Ninja Exported</span>
+                <strong id="metricNinjaExported">n/a</strong>
             </article>
         </section>
 
@@ -105,6 +102,6 @@
         </section>
     </div>
 
-    <script src="./app.js?v=20260408-assettype-1"></script>
+    <script src="./app.js?v=20260507-cycle-status-1"></script>
 </body>
 </html>

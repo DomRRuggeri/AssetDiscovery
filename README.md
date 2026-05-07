@@ -18,7 +18,8 @@ This workspace contains scripts for local network discovery, a SQLite-backed ass
 - `Edit-AssetRecord.ps1`: Search-first maintenance flow that lets you select a matching asset and update it without manually typing the asset ID.
 - `Start-Viewer.ps1`: Starts a local web server for the viewer and opens it with snapshot auto-load enabled.
 - `Update-AssetInventory.ps1`: Legacy JSON inventory merge workflow retained for compatibility.
-- `Verify-AzureAssets.ps1`: Compares canonical assets against Microsoft Entra device objects in the current Azure login context, updates the `AzureVerified` flag in the database, and exports a verification report.
+- `New-AssetDiscoveryGraphApp.ps1`: Creates a Microsoft Graph app registration for unattended device reads.
+- `Verify-AzureAssets.ps1`: Compares canonical assets against Microsoft Entra device objects using Graph app credentials or the current Azure login context, updates the `AzureVerified` flag in the database, and exports a verification report.
 - `AssetToolkit.psm1`: Shared functions used by the scripts.
 - `viewer\`: Static HTML viewer for discovery JSON with summary cards, filters, and exportable tables.
 - `db\`: SQLite schema and helper script used by the PowerShell wrappers.
@@ -59,6 +60,7 @@ CSV or JSON input can use these fields directly, or common aliases such as `Name
 .\\Start-Viewer.ps1
 .\Update-AssetInventory.ps1 -SourcePath .\output\discovery.json -InventoryPath .\data\asset-inventory.json
 .\Verify-AzureAssets.ps1 -DatabasePath .\data\assets.db
+.\Verify-AzureAssets.ps1 -DatabasePath .\data\assets.db -CredentialPath .\data\graph-app-credentials.json
 ```
 
 ## Database model
@@ -102,16 +104,43 @@ Vendor lookup is a separate step from discovery.
 - `Update-AssetVendors.ps1` updates asset `MacVendor` values from the database MAC addresses
 - No hostname-based inference is used for vendor classification
 
-## Azure prerequisites
+## Azure verification
 
-Install and authenticate Azure PowerShell before running verification:
+Azure verification reads Microsoft Entra devices from Microsoft Graph and matches them to canonical assets by hostname, including short-hostname fallback for FQDN inventory names.
+
+For unattended runs, create a Graph app registration once from an admin Azure session:
 
 ```powershell
 Install-Module Az.Accounts -Scope CurrentUser
 Connect-AzAccount
+.\New-AssetDiscoveryGraphApp.ps1 -OutputPath .\data\graph-app-credentials.json
 ```
 
-The verification script currently compares canonical assets against Microsoft Entra device objects visible in the current Azure login context. Matching is hostname-based against the Entra device display name, including short-hostname fallback for FQDN inventory names.
+The generated app is granted the Microsoft Graph `Device.Read.All` application permission. The credential output is written under `data\`, which is ignored by git. Store the client secret securely and rotate it before expiration.
+
+After the app exists, run verification without an interactive Azure login by passing credentials:
+
+```powershell
+.\Verify-AzureAssets.ps1 -DatabasePath .\data\assets.db -CredentialPath .\data\graph-app-credentials.json
+```
+
+Or pass the values directly:
+
+```powershell
+$secret = ConvertTo-SecureString '<client-secret>' -AsPlainText -Force
+.\Verify-AzureAssets.ps1 -DatabasePath .\data\assets.db -TenantId <tenant-id> -ClientId <app-client-id> -ClientSecret $secret
+```
+
+You can also use environment variables for scheduled jobs:
+
+```powershell
+$env:ASSETDISCOVERY_GRAPH_TENANT_ID = '<tenant-id>'
+$env:ASSETDISCOVERY_GRAPH_CLIENT_ID = '<app-client-id>'
+$env:ASSETDISCOVERY_GRAPH_CLIENT_SECRET = '<client-secret>'
+.\Verify-AzureAssets.ps1 -DatabasePath .\data\assets.db
+```
+
+If no Graph app credentials are supplied, `Verify-AzureAssets.ps1` falls back to the current Azure PowerShell context from `Connect-AzAccount`.
 
 For larger environments, start with `-TargetIpAddress` or a very small `-StartHost`/`-EndHost` window and keep `-NoDns`, `-NoMac`, and a small `-DelayMilliseconds` value enabled until you confirm the behavior is acceptable.
 

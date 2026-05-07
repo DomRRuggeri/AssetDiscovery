@@ -4,13 +4,53 @@ param(
 
     [string]$InventoryPath,
 
-    [string]$OutputPath = '.\output\azure-verification.json'
+    [string]$OutputPath = '.\output\azure-verification.json',
+
+    [string]$TenantId,
+
+    [string]$ClientId,
+
+    [System.Security.SecureString]$ClientSecret,
+
+    [string]$ClientSecretPath,
+
+    [string]$CredentialPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Import-Module (Join-Path $PSScriptRoot 'AssetToolkit.psm1') -Force
+
+if ($CredentialPath) {
+    if (-not (Test-Path -LiteralPath $CredentialPath)) {
+        throw "Graph credential file not found: $CredentialPath"
+    }
+
+    $credential = Get-Content -LiteralPath $CredentialPath -Raw | ConvertFrom-Json
+    if (-not $TenantId -and $credential.TenantId) {
+        $TenantId = [string]$credential.TenantId
+    }
+    if (-not $ClientId -and $credential.ClientId) {
+        $ClientId = [string]$credential.ClientId
+    }
+    if (-not $ClientSecret -and $credential.ClientSecret) {
+        $ClientSecret = ConvertTo-SecureString -String ([string]$credential.ClientSecret) -AsPlainText -Force
+    }
+}
+
+if ($ClientSecretPath) {
+    if (-not (Test-Path -LiteralPath $ClientSecretPath)) {
+        throw "Client secret file not found: $ClientSecretPath"
+    }
+
+    $secretText = (Get-Content -LiteralPath $ClientSecretPath -Raw).Trim()
+    if ([string]::IsNullOrWhiteSpace($secretText)) {
+        throw "Client secret file is empty: $ClientSecretPath"
+    }
+
+    $ClientSecret = ConvertTo-SecureString -String $secretText -AsPlainText -Force
+}
 
 if ($InventoryPath) {
     Write-ToolkitLog -Message "Loading inventory from $InventoryPath."
@@ -45,7 +85,18 @@ else {
 }
 
 Write-ToolkitLog -Message 'Collecting Azure asset snapshot.'
-$azureAssets = @(Get-ToolkitAzureAssetSnapshot)
+$azureSnapshotArguments = @{}
+if ($TenantId) {
+    $azureSnapshotArguments.TenantId = $TenantId
+}
+if ($ClientId) {
+    $azureSnapshotArguments.ClientId = $ClientId
+}
+if ($ClientSecret) {
+    $azureSnapshotArguments.ClientSecret = $ClientSecret
+}
+
+$azureAssets = @(Get-ToolkitAzureAssetSnapshot @azureSnapshotArguments)
 
 Write-ToolkitLog -Message "Comparing $($inventoryAssets.Count) inventory assets against $($azureAssets.Count) Azure assets."
 $comparison = @(Compare-ToolkitAssetsToAzure -InventoryAssets $inventoryAssets -AzureAssets $azureAssets)

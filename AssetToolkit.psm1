@@ -297,14 +297,13 @@ function Get-ToolkitHostnameVariants {
     return $variants | Select-Object -Unique
 }
 
-function Get-ToolkitAzureAssetSnapshot {
+function Get-ToolkitGraphAccessTokenFromAzContext {
     [CmdletBinding()]
     param()
 
     $requiredCommands = @(
         'Get-AzContext',
-        'Get-AzAccessToken',
-        'Invoke-RestMethod'
+        'Get-AzAccessToken'
     )
 
     $missingCommands = @($requiredCommands | Where-Object { -not (Test-ToolkitCommand -Name $_) })
@@ -314,20 +313,98 @@ function Get-ToolkitAzureAssetSnapshot {
 
     $context = Get-AzContext -ErrorAction SilentlyContinue
     if (-not $context) {
-        throw 'No Azure context found. Run Connect-AzAccount first.'
+        throw 'No Azure context found. Run Connect-AzAccount first, or provide Graph app credentials.'
     }
 
     $tokenResponse = Get-AzAccessToken -ResourceTypeName MSGraph -ErrorAction Stop
-    $accessToken = ConvertFrom-ToolkitSecureString -SecureString $tokenResponse.Token
+    return ConvertFrom-ToolkitSecureString -SecureString $tokenResponse.Token
+}
+
+function Get-ToolkitGraphAccessTokenFromClientCredential {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$TenantId,
+
+        [Parameter(Mandatory)]
+        [string]$ClientId,
+
+        [Parameter(Mandatory)]
+        [System.Security.SecureString]$ClientSecret
+    )
+
+    $plainSecret = ConvertFrom-ToolkitSecureString -SecureString $ClientSecret
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $tokenUri = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+        $body = @{
+            client_id     = $ClientId
+            client_secret = $plainSecret
+            scope         = 'https://graph.microsoft.com/.default'
+            grant_type    = 'client_credentials'
+        }
+
+        $tokenResponse = Invoke-RestMethod -Method Post -Uri $tokenUri -Body $body -ContentType 'application/x-www-form-urlencoded' -ErrorAction Stop
+        if (-not $tokenResponse.access_token) {
+            throw 'Microsoft identity platform did not return an access token.'
+        }
+
+        return [string]$tokenResponse.access_token
+    }
+    finally {
+        $plainSecret = $null
+    }
+}
+
+function Get-ToolkitAzureAssetSnapshot {
+    [CmdletBinding()]
+    param(
+        [string]$TenantId,
+
+        [string]$ClientId,
+
+        [System.Security.SecureString]$ClientSecret
+    )
+
+    if (-not (Test-ToolkitCommand -Name 'Invoke-RestMethod')) {
+        throw 'Invoke-RestMethod is not available in this PowerShell session.'
+    }
+
+    if (-not $TenantId) {
+        $TenantId = $env:ASSETDISCOVERY_GRAPH_TENANT_ID
+    }
+    if (-not $ClientId) {
+        $ClientId = $env:ASSETDISCOVERY_GRAPH_CLIENT_ID
+    }
+    if (-not $ClientSecret -and $env:ASSETDISCOVERY_GRAPH_CLIENT_SECRET) {
+        $ClientSecret = ConvertTo-SecureString -String $env:ASSETDISCOVERY_GRAPH_CLIENT_SECRET -AsPlainText -Force
+    }
+
+    $hasClientCredential = -not [string]::IsNullOrWhiteSpace($TenantId) -and
+        -not [string]::IsNullOrWhiteSpace($ClientId) -and
+        $null -ne $ClientSecret
+
+    $accessToken = if ($hasClientCredential) {
+        Get-ToolkitGraphAccessTokenFromClientCredential -TenantId $TenantId -ClientId $ClientId -ClientSecret $ClientSecret
+    }
+    else {
+        Get-ToolkitGraphAccessTokenFromAzContext
+    }
+
     $headers = @{
         Authorization = "Bearer $accessToken"
     }
 
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $requestUrl = 'https://graph.microsoft.com/v1.0/devices?$select=id,deviceId,displayName,operatingSystem,operatingSystemVersion,trustType,accountEnabled,approximateLastSignInDateTime,isManaged,isCompliant'
     $results = [System.Collections.Generic.List[object]]::new()
 
     while ($requestUrl) {
         $response = Invoke-RestMethod -Method Get -Uri $requestUrl -Headers $headers -ErrorAction Stop
+        if ($null -eq $response -or $null -eq $response.PSObject.Properties['value']) {
+            throw "Microsoft Graph returned an unexpected response while reading devices from $requestUrl."
+        }
+
         foreach ($device in @($response.value)) {
             $results.Add([pscustomobject]@{
                 Name                         = $device.displayName
@@ -406,6 +483,8 @@ Export-ModuleMember -Function @(
     'Compare-ToolkitAssetsToAzure',
     'ConvertTo-ToolkitMacAddress',
     'Export-ToolkitAssetFile',
+    'Get-ToolkitGraphAccessTokenFromAzContext',
+    'Get-ToolkitGraphAccessTokenFromClientCredential',
     'Get-ToolkitPythonPath',
     'Get-ToolkitPropertyValue',
     'Import-ToolkitAssetFile',

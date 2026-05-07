@@ -6,9 +6,10 @@ const state = {
 };
 
 const SNAPSHOT_URL = "../output/asset-snapshot.json";
+const AZURE_VERIFICATION_URL = "../output/azure-verification.json";
+const NINJA_EXPORT_URL = "../NinjaExport.csv";
 
 const elements = {
-    fileInput: document.getElementById("fileInput"),
     assetTableBody: document.getElementById("assetTableBody"),
     tableMeta: document.getElementById("tableMeta"),
     statusFilter: document.getElementById("statusFilter"),
@@ -17,27 +18,11 @@ const elements = {
     exportButton: document.getElementById("exportButton"),
     sortButtons: document.querySelectorAll(".sort-button"),
     metricAssets: document.getElementById("metricAssets"),
-    metricHostname: document.getElementById("metricHostname"),
     metricOwner: document.getElementById("metricOwner"),
-    metricActive: document.getElementById("metricActive")
+    metricInventoryUpdated: document.getElementById("metricInventoryUpdated"),
+    metricAzureChecked: document.getElementById("metricAzureChecked"),
+    metricNinjaExported: document.getElementById("metricNinjaExported")
 };
-
-elements.fileInput.addEventListener("change", async (event) => {
-    const [file] = event.target.files;
-    if (!file) {
-        return;
-    }
-
-    const text = await file.text();
-    try {
-        const assets = JSON.parse(text);
-        loadAssets(assets, file.name);
-    }
-    catch (error) {
-        window.alert("The selected file is not valid JSON.");
-        console.error(error);
-    }
-});
 
 elements.searchInput.addEventListener("input", applyFilters);
 elements.statusFilter.addEventListener("change", applyFilters);
@@ -62,7 +47,7 @@ elements.sortButtons.forEach((button) => {
 loadDefaultSnapshot();
 updateSortButtons();
 
-function loadAssets(rawAssets, sourceLabel) {
+function loadAssets(rawAssets, sourceLabel, updatedAt = null) {
     const normalized = Array.isArray(rawAssets) ? rawAssets.map(normalizeAsset) : [];
     state.assets = normalized;
     elements.searchInput.value = "";
@@ -71,6 +56,7 @@ function loadAssets(rawAssets, sourceLabel) {
     populateFilters(normalized);
     applyFilters();
     elements.tableMeta.textContent = `${normalized.length} assets loaded from ${sourceLabel}.`;
+    updateInventoryCycleMeta(sourceLabel, updatedAt);
 }
 
 function normalizeAsset(asset) {
@@ -158,9 +144,7 @@ function applyFilters() {
 
 function updateMetrics(assets) {
     elements.metricAssets.textContent = assets.length.toString();
-    elements.metricHostname.textContent = assets.filter((asset) => asset.Hostname).length.toString();
     elements.metricOwner.textContent = assets.filter((asset) => asset.Owner).length.toString();
-    elements.metricActive.textContent = assets.filter((asset) => (asset.Status || "").toLowerCase() === "active").length.toString();
 }
 
 function renderTable(assets) {
@@ -250,13 +234,83 @@ async function loadDefaultSnapshot() {
         }
 
         const assets = await response.json();
-        loadAssets(assets, "asset-snapshot.json");
+        const lastModified = parseHttpDate(response.headers.get("last-modified"));
+        loadAssets(assets, "asset-snapshot.json", lastModified);
+        loadAzureCycleMeta();
+        loadNinjaExportMeta();
     }
     catch (error) {
-        elements.tableMeta.textContent = "Auto-load unavailable. Use Load Local JSON if needed.";
-        elements.assetTableBody.innerHTML = '<tr><td colspan="11" class="empty-state">Auto-load failed. Use Load Local JSON to open asset-snapshot.json.</td></tr>';
+        elements.tableMeta.textContent = "Auto-load unavailable. Start the viewer with Start-Viewer.ps1.";
+        elements.assetTableBody.innerHTML = '<tr><td colspan="11" class="empty-state">Auto-load failed. Start the viewer with Start-Viewer.ps1 so the page can fetch asset-snapshot.json.</td></tr>';
         console.error(error);
     }
+}
+
+async function loadAzureCycleMeta() {
+    try {
+        const response = await fetch(AZURE_VERIFICATION_URL, { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        updateAzureCycleMeta("azure-verification.json", parseHttpDate(response.headers.get("last-modified")));
+    }
+    catch (error) {
+        updateAzureCycleMeta("azure-verification.json", null);
+        console.error(error);
+    }
+}
+
+async function loadNinjaExportMeta() {
+    try {
+        const response = await fetch(NINJA_EXPORT_URL, {
+            cache: "no-store",
+            method: "HEAD"
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        updateNinjaExportMeta(parseHttpDate(response.headers.get("last-modified")));
+    }
+    catch (error) {
+        updateNinjaExportMeta(null);
+        console.error(error);
+    }
+}
+
+function updateInventoryCycleMeta(_sourceLabel, updatedAt) {
+    elements.metricInventoryUpdated.textContent = formatShortDate(updatedAt);
+}
+
+function updateAzureCycleMeta(_sourceLabel, updatedAt) {
+    elements.metricAzureChecked.textContent = formatShortDate(updatedAt);
+}
+
+function updateNinjaExportMeta(updatedAt) {
+    elements.metricNinjaExported.textContent = formatShortDate(updatedAt);
+}
+
+function parseHttpDate(value) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatShortDate(value) {
+    if (!value) {
+        return "n/a";
+    }
+
+    return value.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+    });
 }
 
 function compareAssets(left, right) {
