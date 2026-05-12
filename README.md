@@ -97,6 +97,14 @@ This avoids treating IP address reuse as a durable identity signal while still a
 - IP address overlap is treated as a review signal only and is not used as an automatic merge key
 - rows with conflicting MAC and IP signals are skipped from import and left in the report for manual review
 - multi-adapter rows are reduced to a preferred IPv4 and MAC for canonical storage, while the full candidate lists remain visible in the report
+- empty Ninja placeholder rows are ignored before comparison/import when they have no hostname, IP address, MAC address, owner, asset type, or OS. This removes organization/location-only rows such as `Environment=Default Installs` or `Environment=Main Office` with no asset identity.
+
+If older placeholders already exist in the database, remove them and regenerate the viewer snapshot:
+
+```powershell
+python .\db\db_tool.py remove-ninja-empty-placeholders --db-path .\data\assets.db
+.\Export-AssetSnapshot.ps1 -DatabasePath .\data\assets.db -OutputPath .\output\asset-snapshot.json
+```
 
 ## Vendor enrichment
 

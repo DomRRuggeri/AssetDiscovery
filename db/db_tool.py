@@ -242,6 +242,18 @@ def normalize_ninja_record(record):
     }
 
 
+def is_ignored_ninja_empty_placeholder(record):
+    return (
+        str(record.get("Source") or "").strip().lower() == "ninja-export"
+        and not record.get("Hostname")
+        and not record.get("IpAddress")
+        and not record.get("MacAddress")
+        and not record.get("Owner")
+        and not record.get("AssetType")
+        and not record.get("OperatingSystem")
+    )
+
+
 def load_records(path: Path):
     extension = path.suffix.lower()
     if extension == ".json":
@@ -261,7 +273,12 @@ def load_ninja_records(path: Path):
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         raw = list(csv.DictReader(handle))
 
-    return [normalize_ninja_record(record) for record in raw]
+    records = [normalize_ninja_record(record) for record in raw]
+    return [
+        record
+        for record in records
+        if not is_ignored_ninja_empty_placeholder(record)
+    ]
 
 
 def connect(db_path: Path):
@@ -1092,6 +1109,50 @@ def import_ninja_export(db_path: Path, input_path: Path, report_path: Path | Non
     return payload
 
 
+def remove_ninja_empty_placeholders(db_path: Path):
+    connection = connect(db_path)
+    try:
+        rows = connection.execute(
+            """
+            SELECT asset_id
+            FROM assets
+            WHERE LOWER(COALESCE(source, '')) = 'ninja-export'
+              AND COALESCE(hostname, '') = ''
+              AND COALESCE(ip_address, '') = ''
+              AND COALESCE(mac_address, '') = ''
+              AND COALESCE(owner, '') = ''
+              AND COALESCE(asset_type, '') = ''
+              AND COALESCE(operating_system, '') = ''
+            """
+        ).fetchall()
+        asset_ids = [row["asset_id"] for row in rows]
+
+        if not asset_ids:
+            return {"DeletedAssets": 0, "DeletedObservations": 0, "AssetIds": []}
+
+        placeholders = ",".join("?" for _ in asset_ids)
+        deleted_observations = connection.execute(
+            f"DELETE FROM asset_observations WHERE asset_id IN ({placeholders})",
+            asset_ids,
+        ).rowcount
+        deleted_assets = connection.execute(
+            f"DELETE FROM assets WHERE asset_id IN ({placeholders})",
+            asset_ids,
+        ).rowcount
+        connection.commit()
+        return {
+            "DeletedAssets": deleted_assets,
+            "DeletedObservations": deleted_observations,
+            "AssetIds": asset_ids,
+        }
+    finally:
+        connection.close()
+
+
+def remove_ninja_default_install_placeholders(db_path: Path):
+    return remove_ninja_empty_placeholders(db_path)
+
+
 def export_assets(db_path: Path, output_path: Path):
     connection = connect(db_path)
     try:
@@ -1406,6 +1467,12 @@ def main():
     import_ninja_parser.add_argument("--report-path")
     import_ninja_parser.add_argument("--notes")
 
+    cleanup_ninja_empty_parser = subparsers.add_parser("remove-ninja-empty-placeholders")
+    cleanup_ninja_empty_parser.add_argument("--db-path", required=True)
+
+    cleanup_ninja_parser = subparsers.add_parser("remove-ninja-default-install-placeholders")
+    cleanup_ninja_parser.add_argument("--db-path", required=True)
+
     repair_bad_mac_parser = subparsers.add_parser("repair-bad-ninja-mac-merge")
     repair_bad_mac_parser.add_argument("--db-path", required=True)
     repair_bad_mac_parser.add_argument("--bad-mac-address", required=True)
@@ -1462,6 +1529,10 @@ def main():
         elif args.command == "import-ninja-export":
             report_path = Path(args.report_path) if args.report_path else None
             result = import_ninja_export(Path(args.db_path), Path(args.input_path), report_path, args.notes)
+        elif args.command == "remove-ninja-empty-placeholders":
+            result = remove_ninja_empty_placeholders(Path(args.db_path))
+        elif args.command == "remove-ninja-default-install-placeholders":
+            result = remove_ninja_default_install_placeholders(Path(args.db_path))
         elif args.command == "repair-bad-ninja-mac-merge":
             result = repair_bad_ninja_mac_merge(Path(args.db_path), args.bad_mac_address)
         elif args.command == "export-assets":
